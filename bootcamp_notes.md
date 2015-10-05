@@ -129,7 +129,7 @@ We're re-writing out own pipeline because the existing ones were hard to adapt.
 
 2. SLAC:
 
-   - TODO Check slides
+   - FIXME Check slides
 
 ### Delivery DBs with a UI
 
@@ -194,3 +194,182 @@ Read:
 - LDM-151 Science Pipelines
 - LDM-152 Middleware
 - LDM-153 Database
+
+## Basic afw and Data Butler Concepts (KT-Lim)
+
+A summary of how to use the Stack from an end-user's perspective. More details about AFW tomorrow.
+
+### Why a stack?
+
+- Build a toolkit/framwork that can be plugged together from individual parts
+- Need standardized interfaces
+- Built to be scalable and portable (high performance computing)
+
+### Task abstraction
+
+(FITS not used internally? All data in memory in tasks?)
+
+- Tasks (algorithms) operate on *objects*, not physical representations (i.e., on files)
+- Escaping from the binary program + file metaphor
+- Allow tasks to be invoked in many contexts (CLI, large-scale production, from SUI/T, SDQA)
+- Allows data to be stored in many formats?
+
+  - Filesystem, tape, object store (like an archive), database
+  - Local or remote
+
+### What is afw?
+
+- Applications framework
+- Applications is really Science Pipelines
+- Framework is really a library or toolkit
+- Therefore: Library of astronomical image processing obects that can be used to build algorithms and pipelines
+
+### Image Data
+
+#### Image
+
+- 2D array of pixels
+- Pixel types: uint16, int32, float, double
+
+#### Masks are special types of images; bit masks (16-bits typically; probably 32-bit).
+
+- Every bit has a name associated with it.
+- Eventually add custom bits
+- Mask object contains metadata information (dict) that describes the bits.
+- TODO: we should publish a table of standard bits.
+
+#### Exposure
+
+Three planes plus metedata
+
+1. Image
+2. Mask
+3. variance
+4. plus metadata and additional objects (PSF)
+
+Metadata includes
+
+- WCS
+- PSF
+- Filter
+- Calib
+- Detector
+- PropertyList (key-value pairs of metadata)
+
+### Skymap
+
+- Overlapping **tangent plane projections (tracts)**
+
+  - Dodecahedral, declination band, specific positions, rings, HEADPixes.
+
+- Each divided into overlapping rectangular segments (patches)
+
+  - Inner regions exactly tile tract, overlap border within tract
+
+Note: we *could* decide to use a different pixelization in the future.
+
+### Table/Record
+
+- Like a relational (SQL) table or a FITS table
+- Columns of varying types, defined by a schema
+- Rows (records) for different measurements
+
+This is completely custom. Lots of maintenance for a generic data type. But it is convenient.
+
+SQL aspect: tables can be related to other tables. **But** afw tables don't actually do SQL-like joins.
+
+### Data Butler
+
+Aka *Data Client Access Services*.
+
+- Butler gets data, puts data, lists data
+- Butler manages translations between physical formats and internal afw objects
+- Butler does not do I/O itself; it is a framework for allowing I/O to be configured. The afw objects themselves know how to do I/O. Think of afw as a router or a switch.
+
+Butler is really an interface layer. The actual work is implemented in a mapper
+
+#### Butler manages Repositories
+
+- A repository is a collection of datasets referenced by a path or a URL
+- In practice, today, it is a directory tree.
+- Repository structure defined by its mapper (and its mapper's configuration).
+- The mapper is selected by the `_mapper` file in a repository.
+- Mappers typically written by the camera/instrument/observatory experts that know the layout of camera's file.
+
+##### Repositories can be chained
+
+Output repositories are automatically chained to the parent input repository.
+Datasets from anywhere in the parent chain can be retrieved.
+Pointing to a child repository also lets you see/get objects from the parent repositories.
+This is implemented in such a way that it *looks* like the parent data is part of the child's repository.
+
+#### Datasets
+
+- Anything that can be persisted or retrieved
+- Some datasets can *only* be retrieved; possibly only persisted
+- Range from numbers to images with metadata to entire catalogs
+
+##### Identifying Datasets
+
+- Dataset type
+
+   * Not Python or C++ dtype
+   * Each mapper can have its own list of dataset types (though there are some standard ones)
+
+Hello world.
+
+- Data `id`
+  * key/value pairs
+  * Each dataset type can have its own list of keys
+  * Different mapper can require different keys
+- **Documentation of dataset types and data id keys is sparse.** Currently documented ad-hoc in `obs_*` package policy files.
+  * Need docs for available keys
+  * Need docs for available types
+- Data reference (for programming)
+  * Combination of Butler and data id
+  * It *does not refer to a dataset type.* Can be applied to multiple dataset types (if appropriate).
+
+##### Common Data ID Keys
+
+- `visit`, `ccd`, `filter`
+- `tract`, `patch`
+
+##### Partial Identification
+
+Only unique key/value pairs need to be provided in a data id:
+
+- others are looked up in a registry database (registry is created by a script for a given camera)
+- registry typically generated from raw input data
+- allows for data to be looked up if there is no degeneracy to identify a dataset
+
+Rendezvous:
+
+- Info from one dataset can be used to look up another dataset
+- For example: used to determine what calibration images apply
+
+You could write your own rendezvous code and put it in the mapper.
+
+##### Common Dataset Types
+
+- Images and exposures
+
+  - raw (postISRCCD, visitim, icSrc, icMatch)
+  - calexp
+  - coaddTempExp
+  - deepCoadd-calexp (deepCoadd)
+
+- Calibration Exposures
+
+  - bias, dark, flat, fringe
+
+- Detection and Measurement Tables
+
+  - `src` (`srcMatch`), `src_schema`, `transformed_src`, `transformed_src_schema`
+
+##### Other Metadata Types
+
+FIXME See slides.
+
+#### Summary
+
+**Tasks** use the Butler interface to operate on datasets, often Images or Exposures, identified by data ids within repositories, producing new dtasets, often new Exposures or Tables, in an output repository chained to the input repository. The Butler uses a camera-specific Mapper to define the repository structure, available datasets, and data id keys.
