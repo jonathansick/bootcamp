@@ -370,6 +370,137 @@ You could write your own rendezvous code and put it in the mapper.
 
 FIXME See slides.
 
-#### Summary
+### Summary
 
 **Tasks** use the Butler interface to operate on datasets, often Images or Exposures, identified by data ids within repositories, producing new dtasets, often new Exposures or Tables, in an output repository chained to the input repository. The Butler uses a camera-specific Mapper to define the repository structure, available datasets, and data id keys.
+
+## Using Tasks (John Swinbank)
+
+### What is a task
+
+- A coherent unit of work
+  - Unit of work varies from the trivial (add two numbers) to the complex (do everything needed to detect and measure sources, including ISR, calibration, source finding, etc)).
+- Tasks are combined hierarchically.
+
+```
+setup pipe_tasks -t v11_0
+cd ${PIPE_TASKS_DIR}/examples
+```
+
+Grab some data from afwdata (FIXME)
+
+### Run on CLI
+
+```
+./exampleStatsTask.py small.fits
+```
+
+### Run from Python
+
+Tasks can also be run form Python
+
+```
+task = ExampleSimpleStatsTask()
+result = task.run(maskedImage)
+```
+
+Note; there's nothing special about `run()`. In theory you can call any method on a task object. We don't use ``_call__()`` in order to be more transparent.
+
+The `result` is a struct. You access results from attributes on the Struct.
+
+### Configuration
+
+```
+config = ExampleSigmaClippedStatsTask.ConfigClass(numSigmaClip=1)
+config.numSigmaClip = 2  # change attribute later
+task = ExampleSigmaClippedSatsTask(config=config)
+```
+
+### CLI
+
+You could wrap all the tasks in a homebrewed command line interface; but we shouldn't.
+
+Using CmdLineTask provides us with a standard interface across all our tasks.
+
+- Includes interaction with Butler (read/write data, store task config and metadata)
+- Set and show config, parallelization
+- FIXME a third point.
+
+### Processing Model
+
+- Butler integration adds complexity
+- Rather than specify a filename on the CL, we specify the path to a repository and the data id
+
+```
+myTask.py /path/to/repository --id data_id [options]
+```
+
+The middleware will iterate over everything in the repository that matches `data_id` and call the task's `run()` method
+
+Tasks come with a set of default configuration.
+These defaults can be overridden within the hierarchy of sub-tasks.
+
+``--id`` on a task, without arguments, run on *all data in a repository*.
+
+``--show data`` will tell you what data it will work on.
+
+``--id filter=g`` selects data with that metadata
+
+``--id visit=1..3`` (include range)
+
+``--id visit=1..3:2`` with a *stride* of 2.
+
+``--id visit=1^3`` does an OR.
+
+Sometimes you see both `id` and `--selectID`.
+
+### Configuration
+
+`--show config` is essentially python code
+
+Some Python configs can be done on the command line; but not all.
+
+Instead, use a Python config file. Pass it on the command line with ``-C``.
+
+Most tasks store their configuration ot the repositoy when they are run.
+
+Tasks will refuse to run again if config on CL is different from that already persisted in the repository.
+
+### Composition
+
+Want to compose large tasks out of simple tasks.
+
+`--show tasks`
+
+We can swap (or retarget) another task that has the same interface.
+
+### Additional repositories
+
+- Most tasks produce data products
+- These are normally written to the repo provided on the CL
+- We can use the `--output` option to specify a different repository
+
+### Debugging
+
+`--debug`. This causes it to import a `debug.py`. This `debug.py` has a `DebugInfo` class that can be called to help produce debugging information.
+
+NOTE: this needs to be combined with the logging framework.
+
+The debugging options are stored separately of the tasks, so its easy for those docs to bit rot.
+
+Can also `--loglevel DEBUG`.
+
+Note: this is *not* the same as `--debug`.
+Use `--debug` to open DS9, etc.
+
+To abort on error, `--doraise`. This way it stops before going on to the next data.
+
+### Parallelism
+
+Use `-j N` to run multiple data ids at once. This uses Python's `multiprocessing`.
+
+Large scale parallelization will be done by the NCSA middleware.
+
+### Documentation
+
+See `pipe_base` doxygen and the list of available tasks and their documentation on Doxygen.
