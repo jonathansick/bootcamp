@@ -1,5 +1,7 @@
 # LSST Bootcamp Notes
 
+See slides at: https://github.com/lsst-dm/Oct15_bootcamp
+
 ## Introduction to LSST (Mario)
 
 Specs:
@@ -504,3 +506,71 @@ Large scale parallelization will be done by the NCSA middleware.
 ### Documentation
 
 See `pipe_base` doxygen and the list of available tasks and their documentation on Doxygen.
+
+## EUPS (John Swinbank)
+
+Extended Unix Product Support.
+
+It is a tool for managing multiple versions of interdependent software packages.
+
+It allows for multiple version of the packages installed at once for both development and science.
+
+- Develop with today's version of the stack
+- fix bugs in yesterdays
+- reproduce your science run from last year
+
+EUPS manipulates your environment to make this tractable.
+
+```
+loadLSST.bash
+eups path
+# retarget
+unsetup lsst
+mkdir -p
+```
+
+NOTE: need to get product/package terminology straight.
+
+Most commands are in `eups`. `setup` and `unsetup` are special and used on their own.
+
+Packages Table (.table) files are used tell eups how to prepend the PYTHONPATH to include source from the package.
+
+```
+eups list
+eups tags
+```
+
+How are the current/latest tags being uploaded? Is that only if you're sharing a stack?
+
+Commands to try
+
+```
+eups list
+eups list -s
+setup -v lsst_apps
+more ${LSST_APPS_DIR}/ups/lsst_apps.table
+```
+
+### Eups distrib
+
+The package distribution mechanism used with eups.
+
+```
+eups distrib path
+```
+
+Fetch and install packages defined on some remote server
+
+```
+eups distrib list lsst_apps
+eups distrib install -t v11_0 lsst_apps
+```
+
+To see tags go to https://sw.lsstcorp.org/eupspkg/tags
+
+### Conclusions
+
+- EUPS is a third party package
+- GitHub issue tracker for problems with EUPS itself
+- Report stack installation problems on JIRA
+- Tips on trac: https://dev.lsstcorp.org/track/wiki/EupsTips
