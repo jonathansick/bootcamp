@@ -573,4 +573,4 @@ To see tags go to https://sw.lsstcorp.org/eupspkg/tags
 - EUPS is a third party package
 - GitHub issue tracker for problems with EUPS itself
 - Report stack installation problems on JIRA
-- Tips on trac: https://dev.lsstcorp.org/track/wiki/EupsTips
+- Tips on trac: https://dev.lsstcorp.org/trac/wiki/EupsTips
