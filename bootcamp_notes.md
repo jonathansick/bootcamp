@@ -574,3 +574,136 @@ To see tags go to https://sw.lsstcorp.org/eupspkg/tags
 - GitHub issue tracker for problems with EUPS itself
 - Report stack installation problems on JIRA
 - Tips on trac: https://dev.lsstcorp.org/trac/wiki/EupsTips
+
+## Data Management Organization and Management (Jeff Kantor)
+
+We're a NSF MREFC Project. More on that later.
+
+### DM Team
+
+- 28 new Team members added nsince MREFC
+- DM Staff is now 48 people
+- FY16 is to have 50 FTE
+- Trick is to keep the expertise/experience high as we staff up
+- DM is a highly distributed team. Multi-technology. Multi-cadence.
+  - IPAC
+  - SLAC
+  - UC Davis
+  - UW
+  - NCSA
+  - SLAC
+  - NOAO
+  - FIU
+  - REUNA
+
+The project organization is described in [LDM-294](http://ls.st/LDM-294).
+
+### Institution Organization
+
+- Each institution has a Technical/Cost Account Manager (T/CAM) and a Scientific/Technical Lead (S/TL). They can two people or a single person.
+- T/CAM plays the management role (staffing, etc)
+- DM Leadership Team of S/TLs and T/CAMs meets weekly.
+- Science/Architecture Team (SAT)
+  - Meets monthly (or as superseded by RFD).
+  - Working Groups (WG): Applications, Middleware, Infrastructure, Database, Operations
+- Technical Control Team (TCT)
+  - Collection-2511 - this is the technical baseline/commitment for what we deliver.
+  - Meets as necessary
+
+### LSST DM is part of a NSF MREFC
+
+- We are members of the LSST Project
+- The LSST Project is being funded and conducted as a joint project by the NSF and the DOE, with participation by Chile and other International Partners
+- The LSST Camera is funded as Major Item of Equipment (MIE)
+- The other parts of the project (PMO, DM, EPO, System Engineering) are funded as Major Research Equipment and Facility Construction (MREFC).
+- We get money yearly; overall Construction has $1B from NSF, other amount from DOE.
+- There are **many** rules about what is allowed on project funding
+  - The rules vary somewhat between NSF and DOE
+  - With NSF, DM pipelines is *ok*, but doing general science is *not ok*.
+  - E.g. Can write papers about the pipelines, but not about the science.
+
+### Regularly Scheduled Meetings
+
+- Online meetings
+  - Online meetings (SAT, DMLT, TCT, WGs)
+  - WBS Oriented Meetings (SUI, Infrastructure)
+  - Technical Coordination Meetings (e.g. coordination stand-ups)
+- Face to Face meetings
+  - with Entire DM Team
+    - LSST Project and Community Workshop in August, location varies.
+    - Annual DM All hands Meeting in February, location varies. Usually February.
+  - DM LT: At DM Team Meetings plus in October/November, May/June, location varies.
+
+For schedule DM Meetings and DM Travel google calendars.
+
+### Collaboration Tools
+
+- Mailing lists (lists.lsst.org). dm-announce, dm-staff, dmlt, etc. Some are *controlled* subscription to reach out to certain people. Others are self-subscribing.
+- [HipChat](http://hipchat.org). Use for informal discussions. May end up retiring it/moving to SLAC.
+- [Community Forum](http://community.lsst.org)
+- [Confluence](http://confluence.lsst.org). Project standard.
+- [JIRA](http://jira.lsstcorp.org). Project standard.
+- [URL shortener ls.st](http://http://ls.st)
+- [Google Hangouts](http://ls.st/sup)
+- [project.lsst.org](http://project.lsst.org)
+  - Travel
+  - Contacts
+  - Calendars
+  - Interactions database: add your interaction there to give NSF advance notice. If you're not representing NSF/DOE/or funding profile, it doesn't matter.
+  - Risk Management
+
+### DM Planning Process
+
+1. Top Level
+   * LSST System Requirements and Operations Plans
+   * Proejct Risks and Milesotones
+2. DM System Reqs and Roadmap (LDM-240)[http://ls.st/LDM-240]
+   - High-level picture
+   - 6-month granularity
+3. PMCS
+   - Institutional-level resource assignments
+   - Budgeting
+   - Earned-value management
+   - Basis of montly reports
+4. FIXME see slides for next level
+
+### JIRA
+
+- Software Development and sme non-software efforts are planned and managed at the task-level using JIRA and JIRA Agile
+  - Web based interface
+  - Issues cover essentially all task-based work
+  - Tracks all history and actions on the Issue being updated
+  - Excellent tool to collect status on the work being performed
+- Add JIRA issue as soon as you suspect something is an issue or needs to be done
+- Use Request for Comment to notify and discuss an issue or need that is more complex or larger scope.
+  - If no one raises issues, you have implicit approval
+
+### JIRA Agile
+
+JIRA agile adds agile process to JIRA in the form of stories, epics and sprints, kanbans.
+
+- Software development is generally schedule in sprints, with other activity are generally kanbands
+- Developers and T/CAMs create stories (new developments) improvements (to existing code) and bugs (fixes)
+- Stories are preferably 2-20 story points
+- Stories are complete or not; we don't track progress in side stories
+- Story completion adds to the completion level of their Epic
+- New Stories can be added to an Epic during the cycle
+- Report when a story is done to your T/CAM (same day if possible) or mark it done in JIRA. Real-time update is necessary to show monthly progress to NSF.
+- Deprecate stories by marking 'Invalid' or 'Won't Fix'.
+- If a Story or Epic becomes irrelevant, smaller, or larger, let your T/CAM know.
+
+### JIRA to PMCS
+
+JIRA activities get sucked into the Project Management Control System (PMCS) for scheduling and Earned Vallue Management (EVM).
+
+To enable EVM, we do a "rolling wave" plan for six-month release cycles.
+
+### Documentation and Document Management
+
+- Working versions of documents are developed in a variety of tools (wikis, LaTeX, Acrobat.
+- Official baseline versions are in docushare
+- LSST requirements and interface control documents are in collection-2808 and collection-2807.
+- LSST monthly technical progress reports are in collection-3826
+- DM requirements and design documents are in collection-2511
+- DM monthly progress is in collection-221
+- There are many more related documents, both management and technical, ask your T/CAM if you need to find something.
