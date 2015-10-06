@@ -707,3 +707,186 @@ To enable EVM, we do a "rolling wave" plan for six-month release cycles.
 - DM requirements and design documents are in collection-2511
 - DM monthly progress is in collection-221
 - There are many more related documents, both management and technical, ask your T/CAM if you need to find something.
+
+## DM Code Structure (Tim Jenness)
+
+### Overview
+
+- C++11 and Python 2.7
+  - Use python whenever possible
+  - Use C++ for performance only
+- We do not use Cython/Numba.
+- Intending to support Python 3 soon
+- GCC 4.8 minimum supported compiler
+- Clang supported
+- SUI uses Java 1.6 server side, JavaScript on client side
+- Linux CenOS 6 and 7; OS X Yosemite, Mavericks are test platforms. No El Cap
+- All code in lsst namespace
+
+### Package overview
+
+- orchestration: crtl
+- Data access framework (Butler): daf
+- pipeline execution frameworks: pex
+- afw
+- Image Processing: ip
+- Measurement: meas
+- Coaddition: coadd
+- Pipeline infrastructure: pipe
+- Control display tools: display
+- Camera specific mappings: obs
+- Web vis of images/catalogs: firefly (Java)
+- Data access: dax
+
+See confluence for a list of pages
+
+### Middleware: log
+
+- log package has C++ / Python interfaces
+- Runs on log4cxx
+- INFO/WARN/DEBUG/TRAVEL levels
+
+### Middleware: exceptions
+
+- pex_exceptions proves a set of C++ exceptions that can be caught in Python code.
+- Use native Python exceptions when appropriate.
+- Exceptions include: LogicError, DomainError, InvalidParameterError, etc
+
+### Support packages
+
+- `daf_base`:
+  - Datetime handling
+  - PrpertySet/List
+- `ndarray`: C++ implementation of numpy. Translated into numpy on Python side; use `eigen` for fancy stuff.
+- `geom`: cartesian and spherical geometry
+- `db`: database access utilities
+
+### Third-party packages
+
+- 3rd party packages are distributed as EUPS-managed packages installable with `eups distrib` or `lsstsw`
+  - They are versioned
+  - LSST packages list them as explicity dependencies
+- Numpy and matplotlib are presumed to have been installed by other means (but this is checked)
+- Some 3rd party packages are not expected to be called directly
+- New packages can be requested via the RFC process
+  - Using 3rd party packages is encouraged rather than reimplementing a wheel
+  - It's easy to make a new eups package
+- 3rd party Python packages are currently distributed in this way and not via pip (there's an RFC for this)
+
+Available packages include:
+
+- cfitsio
+- eigen (linear algebra)
+- boost (though we're trying to move away from boost towards C++11)
+- wcslib
+- fftw
+- gsl
+- minuit2
+
+Full list at https://confluence.lsstcorp.org/display/DM/DM+Third+Party+Software
+
+TODO: move this page to git/the docs.
+
+### Structure of a package
+
+```
+bin  # executables / python scripts
+doc  # doxygen
+examples  # examples
+include
+lib
+python
+src
+tests
+ups
+```
+
+### Building a package: scons
+
+- Scons is used to build LSST software
+- To build and test a package
+  - `setup -k -r .` to ensure tests use the newly-built code
+  - `scons -j 4 opt=3` for parallelized build
+- `scone -j 4 python` will just build the python code
+- Sconstruct file is used by scons to configure the build
+- SConstruct files are used for subsidiary configuration in subdirs.
+
+### LSST extensions to Scons: sconsUtils
+
+- EUPS version and dependency tracking
+- Compiler detection (clang vs gcc and how to add C++11 support)
+- Swig interface building
+- How to run tests
+
+See Sconsfile example in slide
+
+### Python code
+
+- Lives in the `python/lsst` directory
+- If your package is named something_else the code will be located in python/lsst/something/else
+- Each sub-directory (lsst and below) must have an `__init__.py` that contains
+
+```
+import pkgutil, lsstimport
+__path__ = pkgutil.extend_path(__path__, __name__)
+```
+
+(`import lsstimport` seems to be for Swig support)
+
+This boilerplate is required to setup the python namespace.
+
+### Swig
+
+- http://www.swig.org
+- Parses C++ header files and generated Python wrapper code
+- Interface is defined in `.i` files that live in the `python/lsst` tree.
+- `meas_base` `.i` files are in `python/lsst/meas/base`
+- Swig generates .py file and shared library. For `meas_base` baseLib.i generates baseLib.py and `_baseLib.so`.
+  - The other .i files are included by baseLib.i
+  - The Sconscript file in the same directory tells scons that only baseLib is relevant
+  - Look in the `_wrap.cc` file to see what Swig has generated.
+
+### Third-party package structure
+
+- 3rd party packages are wrappers around the standard distribution files
+- EUPS, via eupspkg, knows how to build different styles of distro: Python's setup.py, autoconf and cmake.
+
+Directories:
+
+- `ups`: EUPS configuration, including dependencies and build instructions
+- `upstream`: upstream unmodified distribution tar file
+- `patches`: patches to be applied to the distribution before building it (this is generally an anti-pattern)
+
+### Testing
+
+- Each package has associated unit tests
+- Python tests use unittest
+  - `assertEqual`, `assertLess`
+  - Only use `assertTrue` if you are really testing truth
+- Use decorators to skip tests; don't comment those tests out
+- C++ tests use boost
+- Aim for new code to come with associated unit tests
+  - Code coverage is less than ideal at present but aiming to begin gathering metrics on this
+  - Integration tests are used to test the stack as a whole
+- Python tests will soon be run via a standard python test environment such as `nose` or `py.test`.
+
+  These will give significantly better test output handling in the Jenkins continuous integration system.
+
+### Documentation
+
+- Currently the doc directory.
+- Doxygen format used for method and class descriptions inline.
+- Currently moving to reST and numpydoc format and aiming to integrate into ReadTheDocs.
+
+### The ups directory
+
+- The `ups` directory teaches EUPS and `sconsUtils` how the pacakge relates to other pacakges and how to configure it when it is setup.
+- The `.table` file lists dependencies and environment variables for EUPS
+- The `.cfg` file contains configuration information for `sconsUtils`
+- The `eupspkg.cfg.sh` provides overrides and additional information to allow eupspkg to build a package.
+
+### Coding standards
+
+- We want to move our code standard to a 'diff' against PEP8
+- **New code can immediate use PEP8 naming**
+- C++ coding standard
