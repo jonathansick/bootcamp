@@ -890,3 +890,122 @@ Directories:
 - We want to move our code standard to a 'diff' against PEP8
 - **New code can immediate use PEP8 naming**
 - C++ coding standard
+
+## afw (Simon Krughoff)
+
+### cameraGeom
+
+- A system for representing transformation between different coordinate systems in the optical system
+- Utilities for building cameras
+
+### coord
+
+- Coordinate construction and conversion
+- Implements the following
+  - FK5, etc
+  - FIXME add more
+
+### detection
+
+- threshold
+- footprint (collection of pixels + metadata)
+- HeavyFootprint (FIXME what is a HeavyFootprint?)
+- Psf
+
+### geom
+
+- low-level image geometry
+- Angle, Box, Extent, Point, Span
+- Ellipse, Polygon
+- XYTransforms: Affine, Identity, Inverted, Multi, Radial, Separable
+  - these are *reversible* transformations
+
+### image
+
+- utilities to actually manipulate images
+- Image things:
+  - Image: single grid of pixels (float, double, int, uint)
+  - Mask: grid of bit mask pixels with associated mask plane definitions
+  - DecoratedImage - Image with metadata (deprecated)
+  - MaskedImage - Image + Mask + Variance. Most of the stack uses these
+  - Exposure - MaskedImage with associated image things: WCS, Psf, metadata, calibration info.
+  - Side note: we should *always* use Exposures as the interface between tasks
+- Other associated things:
+  - Defect
+  - Filter
+  - Calib (this is really photometric calibration), Wcs
+
+### math
+
+- Statistics (mean, stdev, var, median, inner quartile range, clipped stats, min
+- Kernels
+- Convolution
+- Interpolation and approximation
+- Fitting
+- Functions
+- Splines
+- Random number generator
+- Warping - Lanczos, bilinear, etc
+
+### table
+
+- Tables are really catalogs with fixed schema. The schema is flexible and can be set up to do lots of things
+  - Store amp electronigcs info
+  - Source catalogs
+  - Match catalogs
+
+### How to find things
+
+- Doxygen: but it's hard to find Python documentation in the doxygen
+- GitHub code
+- unit tests (ugh, so bad we use unit tests for docs)
+- Help strings in Python (but not useful when Swig'd)
+- Search with an editor
+
+### Example
+
+See code on bootcamp repo
+
+Modifiers on method names (e.g., BoxI) are due to Swig.
+
+```
+box - afwGeom.BoxI(afwGeom.PointI(200, 500),
+                   afwGeom.ExtendI())
+im = afwImage.ImafeF(box)
+
+**Gotcha** the LLC is not 0, 0. This bounding box is relative to a global coordinate system called PARENT (the default)
+
+Sub images are *views* on the original array
+
+Can't add images of different types. Need to explicity use the *convertX()* method.
+
+afw.detection can be used for low-level detection based on thresholding to create *footprints*.
+
+```
+afw_detect.FootprintSet(masked_im, threshold, 'DETECTED')
+```
+
+where DETECTED is the name of a bit in the mask.
+
+afw_math has background estimation tools.
+
+Once you have footprints set, you can easily do detections on each footprint.
+
+```
+im, mask, var = masked_im.getArrays()
+```
+
+(those are views)
+
+The `>>=` operator does?? reflections??
+
+You can also do operations on the numpy arrays.
+
+Numpy uses (y, x) indexing with afw.image uses (x,y) indexing.
+
+### Understanding afw
+
+The original intent was to keep the C++ environment rich.
+This led to classes not just functions defined in C++.
+
+Takeaway: the Python/C++ line is hard to draw. May be better not to expose all of afw C++ to python.
