@@ -1435,3 +1435,58 @@ class CoaddTaskRunner(pipeBase.TaskRunner):
         return pipeline.TaskRunner.getTargetList(...)
 ```
 
+## Creating an obs_ package
+
+There is an obs package for each observatory.
+Defines keys in header of raw data; camera geometry; overrides for tasks that specific to the camera, and color term corrections.
+
+### Camera mapper
+
+camera maper makes the following available to butler
+
+- policy file with organization of data in repositroy
+- camera geometry
+- defect registry (locations fo bad pixels)
+
+And also contain
+
+- camera specific configuration for tasks
+
+Butler 2.0 will make it easier to define new dataset types. Camera mapper and policy files will be affected in the future.
+
+Camera mapppers subclass lsst.daf.butlerUtils.CameraMapper. 
+
+### Policy file
+
+- type and location of each supported "dataset type" (e.g., where raws are, where calibrated exposures go, etc.)
+- location of camera geometry information
+
+### Camera geometry
+
+- estimate plate scale and optical distortion
+- position of the detector in teh focal plane
+- amplifier gain and read noise
+- serial number of each detector
+
+Some information might be time variant. e.g., new filer. new detector. This is a known limitation that hopefully the new Butler will fix.
+
+### Making a camera mapper
+
+the `\_makeCamera` method unpersists the camera geomtry. You may override this method, but the default is good.
+
+the default requires hat you policy have n entry "camera" containing a camera.py and has a FITS-based amp info table.
+
+You get this information from a camera team. Then probably write a script that takes data from teh observatory and transforms it into the camera's format.
+
+The known bad pixels are in an sqllite db file.
+
+### Camera specific tasks and configurations
+
+- config/taskanem.py
+- config/cameraname/taskname.py
+
+Use the configs in here to retarget subtasks to use camera-specific subtasks (especially useful for ISR).
+
+note processCcdSdss.py exists because its so different from normal data (already reduced). You can't retarget a top-level task.
+
+note that colorterms, at least in HSC, are in config files. These should really be part of a database.
