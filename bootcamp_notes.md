@@ -1300,3 +1300,138 @@ The application output is put into `/lsst/DC3root/{usr}_{date}_{id}`
 You can use `condor_rm` to quit jobs.
 
 See https://confluence.lsstcorp.org/display/DM/Orchestration for more information.
+
+## Russell Owen
+
+See the doxygen page for LSST tasks
+
+Not all tasks are documented at this time.
+
+Here we'll look at three Example tasks.
+
+### How to write a task
+
+Tasks are subclasses of `lsst.pipe.base.task`
+
+Every task needs a configuration.
+Configuration parameters are set once and apply to any dataset being passed.
+They should be defaults.
+Things that change all the times shouldn't be Configs, they should be arguments.
+
+See `ExampleSigmaClippedStatsTask`.
+
+The Config is a subclass of `pexConfig.Config`. You add configs; each gets a type, documentation and default value.
+
+Configuration fields
+
+- range with min/max acceptable fields
+- subtasks `ConfigurableField` (this way you can retarget subtasks by modifying the configuration)
+
+`_defaultName` is required for Command Line tasks. This is crucial for top-level (command-line) tasks. The name of the task defines where the configuration is persisted.
+Name of the subtask is `{top level _defaultName}.{subtask _defaultName}`
+
+`RunnerClass` is needed by Command line tasks that allows multiprocessing
+
+`canMultiprocess` is only needed for command-line tasks; see canMultiprocess for more information
+
+#### init method of tasks
+
+`__init__`
+
+- must make any subtasks with `self.subtask`. The argument of this method then becomes the *attribute* of the task.
+- you will also want to construct the schema since you need to construct a schema before you construct any table.
+
+**All instance variables in a task must be static; pass those as arguments. This is probably for thread safety.**
+
+#### Run method of tasks
+
+`run` is the primary entry point. not special; some tasks have multiple entry points.
+
+Don't *put all code in the run method*. You want to break it down into sub-tasks so that re-targeting is possible.
+
+The `run` method taskes a `dataRef`.
+
+When entering run, say what data you're processing with self.log.info("Processing data ID %s")
+
+Run
+
+```
+if self.config.doFail:
+    raise pipeBase.TaskError(...)
+```
+
+if it was a data-generated error that shouldn't print a traceback
+
+We get the data by asking the dataRef, e.g.:
+
+```
+rawExp = dataRef.get("raw")
+maskedImage = rawExp.getMaskedImage()
+```
+
+#### Using lsst.debug
+
+```
+import lsstDebug
+display = lsstDebug.Info(__name__).display
+if display:
+    frame = 1
+    mtv(rawExp, frame=frame, title="exposure")
+```
+
+The task docs should tell you how the display is used and what arguments it takes.
+
+Note there's newer display code available than the example shown here.
+
+#### Subtask
+
+- document it!
+- subtasks should return a `pipeBase.Struct` (dictionaries with named attributes). This way a subtask can return *extra* data without breaking interfaces.
+
+#### Stats
+
+```
+afwMath.makeStatistics(maskedImage, afwMath.MEANCLIP | afwMath.STDEVCLIP | afwMath.ERRORS, stats_control)
+```
+
+### Command-line Tasks
+
+Command line tasks always take a dataRef and have a run method.
+
+Command line tasks are subclasses of `lsst.pipe.base.CmdLineTask`.
+
+By default has a run method that takes a dataRef. You need more arguments, you need to provide an ArgumentParker and often a CustomTaskRunner.
+
+Every command line task needs a `TaskRunner`; the default one is usually good.
+
+These task runners are put into `bin` and get added to the global task namespace.
+
+#### Persisting Config and MetaData
+
+Use dataset types
+
+* `_DefaultName_config` for configuration
+* `_DefaultName_metadata`` for metadata
+
+If these are `None`, there's no persistence. Useful for one-off tasks.
+
+#### Argument Parser
+
+Default argument parser is appropriate for working with raw exposures.
+If you want to work with coadds, you'll need a new arguemnt parker.
+
+Adding new DatasetTypes will be awesome with the new Butler.
+
+#### Custom task runners
+
+Need a custom task runner fi you need different arguments, or don't need data references/a butler.
+
+E.g.:
+
+```
+class CoaddTaskRunner(pipeBase.TaskRunner):
+    @staticmethod
+    def getTargetList(parsedCmd, **kwargs):
+        return pipeline.TaskRunner.getTargetList(...)
+```
+
