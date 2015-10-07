@@ -971,7 +971,8 @@ Modifiers on method names (e.g., BoxI) are due to Swig.
 ```
 box - afwGeom.BoxI(afwGeom.PointI(200, 500),
                    afwGeom.ExtendI())
-im = afwImage.ImafeF(box)
+im = afwImage.ImageF(box)
+```
 
 **Gotcha** the LLC is not 0, 0. This bounding box is relative to a global coordinate system called PARENT (the default)
 
@@ -1009,3 +1010,241 @@ The original intent was to keep the C++ environment rich.
 This led to classes not just functions defined in C++.
 
 Takeaway: the Python/C++ line is hard to draw. May be better not to expose all of afw C++ to python.
+
+## Source Measurements and Tables (Jim Bosch)
+
+Measurement and tables are related because measurements are delivered in tables.
+the talk will discuss how to write a measurement task and plugin.
+
+### Footprint
+
+Regular footprints describe on regions of pixels.
+
+Heavy footprints describe both regions and the values of the pixels.
+
+### Flow
+
+#### Detect
+
+1. Exposure
+2. pixels, Psf
+3. SourceDetectionTask
+4. parent Footprints
+5. Source Catalog
+6. SourceDetectionTask sends DETECT mask plane back to the Exposure
+
+The DETECT step creates Footprints
+
+#### Deblend
+
+Takes Footprints. May split them to create Heavy footprints (i.e., child footprints) that divide flux of the regular (parent) footprint.
+
+#### Measure
+
+Take footprints, wcs information, etc., and now measure quantities for the 
+
+```
+replace all detections with noise
+
+for record in catalog:
+    restore pixels from HeavyFootprint
+    run plugins
+    re-replace pixels with noise
+
+apply aperture corrections
+```
+
+Note this potentially double-counts flux.
+
+### Running a Single Frame Measurement Task
+
+1. Initialize a minimal schema: `lsst.afw.table.SourceTable.makeMinimalSchema()`
+2. Customize the detection task
+3. Call the Detection task, passing the config and the schema.
+4. Initialize other tasks (deblend, etc) to fully setup the schema
+
+#### Notes on configuring a measurement task
+
+- list of active plugins is a set
+- need to 'bless' which plugin's output is called the "Model Flux"
+
+#### SourceTable
+
+- SourceTable is really a factory for SouceRecords, not a container for them
+- Pass Source table and an Exposure to the Task.run() method.
+- Pass Exposure and Catalog to  SourceDeblendTask.
+- Finally run the measure task.
+
+### Writing a  SingleFramePlugin
+
+1. Config class
+2. Plugin
+   - registers with `@lsst.meas.base.register('ext_BoxFlux')`
+   - `ConfigClass = BoxFluxClass`
+   - Classmethod `getExecutionOrder`
+   - All Plugins have hte same `__init__` signature
+   - `measure` method takes a measRecord and exposure where all neighbours are replaced with noise
+
+The Plugin has a run order. BasePlugin has the execution orders.
+
+See slides/video for tutorial in writing a task.
+
+Discussion of schema column names. There are strong conventions.
+
+Use `schema.join()` to add fields to the schema. Some algorithms have strong naming conventions.
+
+```
+measRecord.get()  # get and set always work
+measRecord[]  # does not always work;
+```
+
+### Error Handling in Plugins
+
+- If the plugin will fail on all sources because of mis-configuration, raise `lsst.eas.base.FatalAlgorithmError`
+- If a known failure mode, set at least two flags
+  - Set flags as fields in `measure()` method, or
+  - Re-raise as `lsst.meas.base.MeasurementError` and set flags in `fail()`.
+- All other exceptions will trigger warnings, and `fail()` flags should be set
+
+### Unit Transformations
+
+See slides from talk.
+
+### Plugins in C++
+
+Plugins can also be written in C++ (and most current ones are). Unfortunately, the APIs make it easier to actually write plugins in C++.
+
+### Forced Measurement
+
+Measure sources on an image while holding the centroids fixed (or other values).
+
+### Tables
+
+#### Records and Keys
+
+Base record has
+
+- data
+- block
+- table (a record remembers the table that created it and relies on it to know is own schema)
+
+A Key has an offset
+
+Record access is some kind of magic BS.
+
+### Records and Tables
+
+Table table has
+
+- data
+- metadata (`PropertyList`)
+- block
+
+This is why a table is actually just a factory that knows its schema.
+
+A BaseCatalog is really just a vector of pointers to records.
+
+- No guarantee the recors are in the orer they were allocated in
+- no guarantee that the reords are from the same Block
+- No guarantee that records are even from the same Table or schema.
+
+### Source Records
+
+Source Records differ from BaseRecords in that they have a **footprint**.
+
+SourceRecords have a minimal schema
+
+SourceRecords and SourceCatalogs have special getters for certain predefined field names. E.g.,
+
+- `getX` -> get(`slow_Centroid_x`)
+
+### Record/Table subclasses
+
+- `SimpleRecord` used by reference entries for astrometry
+- `ExposureRecord` holds metadata about an exposure, including the Psf and Wcs. Mostly used by CoaddInputs and CoaddPsf
+- `AmpInfoRecord` used by the camera geomtry module to store both structured and flexible information about amplifiers
+- `PeakRecord` used to store peaks within a Footprint
+
+### Getting arrays from columns in Catalogs
+
+```
+array = catalog['field']
+```
+
+gets a numpy view of a column.
+
+This only works for contiguous in memory; otherwise
+
+```
+catalog = catalog.copy(deep=True)
+```
+
+Use the `isContiguous` method to test.
+
+### Catalog Indexing
+
+- Pass strong or Key to extract column (return numpy ndarray)
+- Pass integer, a slice, or boolean array as `catalog[x]` to index the rows (returning a record or a subset catalog)
+
+Gotchas
+
+- You can't pass an array of row indices (not implemented yet)
+- Boolean indices don't force a copy so they generally return a noncontiguous Catalog (this is intentional - we want all copies explicit)
+
+### Adding/removing columns
+
+Once we've created a table, we can't change the Schema.
+
+- Whenever you ask a Record/Table/Catalog you get a copy, so modifying it won't do what you want.
+
+### To add a column (schema mappers)
+
+Need to
+
+1. Get a SchemaMapper
+2. Add a minimal schema from the original catalog
+3. Add a field to the schema
+4. Create an empty catalog with the Schema Mapper's output schema
+5. Add all records from the old catalog to the new one, using the SchemaMapper to copy values
+
+### Flag Fields
+
+Key for a flag field has
+
+- offset
+- bit
+
+Flag column arrays are copies, not views.
+
+Only get/set are supported, not `[]`.
+
+### Slots and Aliases
+
+We've already mentioned the "slot" system, which adds getters to SourceRecord and SourceCatalog for some predefined names. Those names are usually *aliases* to real field names.
+
+A Schema holds its aliases in an attached AliasMap. Aliases are *just* string mappings. There is some globbing-ish functionality to define lots of aliases at once.
+
+### FunctorKeys
+
+`FunctorKeys` provide a mechanism to get first-class objects our of one or more fields in a record.
+
+For example, creating coordinates from separate x/y columns (i.e., packing/unpacking data structures)
+
+Can even do things like get magnitudes from flux values.
+
+Should be possible to create FunctorKeys in Python (there are separate implementations in Python and C++).
+
+### Summary of afw.table Idiosyncracies
+
+- [record, table, catalog.schema returns a copy. **But** that copy shares an AliasMap wth the original!
+- Can't use `[]` on Flag fields (only get/set)
+- Using an array of booleans to index a catalog returns a noncontiguous view
+- another one
+
+### More info
+
+- afw.table reference doxygen page is decent
+- print(schema) to get a useful introspection of the schema
+- docstrings are useful
+- Doxygen reference documentation is quite complete, but often only applies to the C++ interface.
+- If something seems weird, just ask particularly on community.lsst.org.
