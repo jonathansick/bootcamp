@@ -1248,3 +1248,55 @@ Should be possible to create FunctorKeys in Python (there are separate implement
 - docstrings are useful
 - Doxygen reference documentation is quite complete, but often only applies to the C++ interface.
 - If something seems weird, just ask particularly on community.lsst.org.
+
+## Orchestration and Control (Steve at NCSA)
+
+- Develop and test locally
+- Take same code and run it in production
+
+### LSST package ctrl_orca - Orca
+
+- software setup, execution, monitoring and shutdown across multiple machines
+- internall uses condor, but the user doesn't need to know
+- User specified parameters in Config files
+
+### ctrl_execute
+
+- Simplifies the execution or orca
+- writes configuration files for orca
+- duplicates local execution environment remotely
+
+Local packages that are setup with eUPS are duplicated remotes to more easily replicate any errors locally
+
+### Quickstart
+
+```
+setup ctrl_execute
+setup ctrl_platform_lsst
+```
+
+```
+runOrca.py -p lsst -c "processCcdSdss.py sdss /home/user/input --output ./output [more args]"
+```
+
+Simple test
+
+```
+runOrca.py -p lsst -c "/bin/echo" -i $HOME/ids.txt -e ~/lsstsw
+```
+
+use
+
+```
+condor_q
+```
+
+to see the status of jobs.
+
+HTCondor output files are put into FIXME a directory.
+
+The application output is put into `/lsst/DC3root/{usr}_{date}_{id}`
+
+You can use `condor_rm` to quit jobs.
+
+See https://confluence.lsstcorp.org/display/DM/Orchestration for more information.
